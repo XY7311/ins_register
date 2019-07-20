@@ -1,64 +1,66 @@
-import email
-import imaplib
-import poplib
-import re
-import smtplib
-from email.header import Header
-from email.mime.text import MIMEText
-
+import time
 from selenium import webdriver
+from explicit_wait import explicit_wait
 
-
-def recv_email_by_pop3(email,password):
-    pop_server_host = "pop.gmail.com"
-    pop_server_port = 995
-
-    #连接服务器
-    try:
-        email_server = poplib.POP3_SSL(host=pop_server_host, port=pop_server_port, timeout=10)
-        print("connect server success")
-    except:
-        print("email server connect time out")
-
-    # 验证邮箱
-    try:
-        email_server.user(email)
-        print("username existd")
-    except:
-        print("email address do not exist")
-        exit(1)
-    # 验证邮箱密码
-    try:
-        email_server.pass_(password)
-        print("password correct")
-    except:
-        print("password do not correct")
-        exit(1)
-
-    # 邮件数量
-    email_count = len(email_server.list()[1])
-    # 通过retr(index)读取邮件的内容
-    resp, lines, octets = email_server.retr(email_count) #最新一封邮件
-    email_content = b'\r\n'.join(lines)
-    msg=email.message_from_string(email_content.decode())
-    email_msg = msg.get_payload(decode=True)
-    yjhtml = email_msg.decode('utf8','replace')
-    lst = re.findall(r"href=.*>Confirm",yjhtml)
-    print("邮件链接为："+lst[0][6:-9])
-    # 关闭连接
-    email_server.close()
-    return lst[0][6:-9]
-
-def confir(email,password):
-    href = recv_email_by_pop3(email,password)
+def confir_gmail(email,pwd,recovery):
     options = webdriver.ChromeOptions()
     options.add_argument("-lang=en-uk")
     chrome_obj = webdriver.Chrome(chrome_options=options)
+    chrome_obj.delete_all_cookies()
     chrome_obj.maximize_window()
-    chrome_obj.get(href)
+    url = "https://accounts.google.com/AccountChooser?service=mail&continue=https://mail.google.com/mail/"
+    chrome_obj.get(url)
+
+    ec_params = ['//input[@id="identifierId"]',"XPath"]
+    explicit_wait(chrome_obj,"VOEL",ec_params)
+    chrome_obj.find_element_by_xpath('//input[@id="identifierId"]').send_keys(email)
+    chrome_obj.find_element_by_xpath('//div[@id="identifierNext"]/span/span').click()
+
+    ec_params = ['//input[@name="password"]',"XPath"]
+    explicit_wait(chrome_obj,"VOEL",ec_params)
+    chrome_obj.find_element_by_xpath('//input[@name="password"]').send_keys(pwd)
+    chrome_obj.find_element_by_xpath('//div[@id="passwordNext"]/span/span').click()
+
+    try:
+        #点击验证邮箱
+        ec_params = ['//ul/li[1]/div/div',"XPath"]
+        explicit_wait(chrome_obj,"VOEL",ec_params,timeout=5)
+        chrome_obj.find_element_by_xpath('//ul/li[1]/div/div').click()
+    except:
+        pass
+
+    try:
+        #输入辅助邮箱
+        ec_params = ['//input[@id="identifierId"]',"XPath"]
+        explicit_wait(chrome_obj,"VOEL",ec_params,timeout=5)
+        chrome_obj.find_element_by_xpath('//input[@id="identifierId"]').send_keys(recovery)
+        chrome_obj.find_element_by_xpath('//div[1]/div[@role="button"]/span/span').click()
+    except:
+        pass
+
     #验证
+    ec_params = ['//header[@role="banner"]',"XPath"]
+    explicit_wait(chrome_obj,"VOEL",ec_params,timeout=60)
+    l = chrome_obj.find_elements_by_xpath('//tbody/tr//div[2]/span/span')
+    for email_send in l:
+        email_name = email_send.text
+        print(email_name)
+        if email_name == "Instagram":
+            email_send.click()
+            ec_params = ['//div[@role="main"]',"XPath"]
+            explicit_wait(chrome_obj,"VOEL",ec_params)
+            chrome_obj.find_element_by_xpath('//tbody/tr[3]//tr[1]/td[2]//tr/td[2]//center/font/span').click()
+            time.sleep(15)
+    
+    chrome_obj.quit()
 
 if __name__ == "__main__":
-    email_address = "snlanl18@gmail.com"
-    email_password = "iwpB8YySIESm4de"
-    confir(email_address,email_password)
+    email = "gksmfsns@gmail.com"
+    pwd = "7LewM7JkeEGsHde"
+    recovery = "dlqhdms00@gmail.com"
+    confir_gmail(email,pwd,recovery)
+
+# 可能遇到的问题
+#     浏览器不支持
+#     需要验证码
+#     要求更改密码

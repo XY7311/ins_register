@@ -5,10 +5,11 @@ import time
 import pymysql
 from selenium import webdriver
 
-from confir_gmail import confir
+from User_Agent import User_Agent
+from confir_gmail import confir_gmail
 from explicit_wait import explicit_wait
 from ins_pymsql import fetch_one_sql, oprt_mysql
-from User_Agent import User_Agent
+from confir_yahoomail import confirm_email, grt_mail_link
 
 
 class Main():
@@ -89,8 +90,12 @@ class Main():
         for i in date:
             email = i[1]
             pwd = i[2]
+            recovery = i[3]
             self.ins_reg(email,pwd)
-            confir(email,pwd)
+            #验证yahoo邮箱
+            # confirm_email(grt_mail_link(email,pwd))
+            #验证邮箱
+            confir_gmail(email,pwd,recovery)
 
 
 if __name__ == "__main__":
